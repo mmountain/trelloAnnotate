@@ -29,67 +29,71 @@ function AnnotationCanvas({
   useEffect(() => {
     if (!attachment || !t) return;
 
-    // Use Trello's signUrl to bypass CORS and 401 Unauthorized errors
-    // Signing the URL creates a time-limited proxy link with necessary headers
-    t.signUrl(attachment.url)
-      .then(signedUrl => {
-        const img = new window.Image();
-        
-        img.onload = () => {
-          setImage(img);
+    // Helper to load image from a URL
+    const loadImage = (url) => {
+      const img = new window.Image();
+      img.onload = () => {
+        setImage(img);
 
-          // Calculate scale to fit container
-          const scaleX = (containerWidth - 40) / img.width;
-          const scaleY = (containerHeight - 40) / img.height;
-          const newScale = Math.min(scaleX, scaleY, 1); // Don't scale up
+        const scaleX = (containerWidth - 40) / img.width;
+        const scaleY = (containerHeight - 40) / img.height;
+        const newScale = Math.min(scaleX, scaleY, 1);
 
-          setScale(newScale);
-          setImageSize({
-            width: img.width * newScale,
-            height: img.height * newScale
-          });
-        };
-        
-        img.onerror = (err) => {
-          console.error('Failed to load image:', err);
-        };
-        
-        img.src = signedUrl;
-      })
-      .catch(err => {
-        console.error('Error signing attachment URL:', err);
-      });
+        setScale(newScale);
+        setImageSize({
+          width: img.width * newScale,
+          height: img.height * newScale
+        });
+      };
+      img.onerror = (err) => {
+        console.error('Failed to load image:', err);
+      };
+      img.src = url;
+    };
+
+    try {
+      // t.signUrl can be synchronous or asynchronous depending on the environment
+      const result = t.signUrl(attachment.url);
+      
+      if (result && typeof result.then === 'function') {
+        result.then(loadImage).catch(err => {
+          console.error('Error signing URL (async):', err);
+          loadImage(attachment.url); // Fallback
+        });
+      } else if (typeof result === 'string') {
+        loadImage(result);
+      } else {
+        loadImage(attachment.url);
+      }
+    } catch (e) {
+      console.error('Exception calling signUrl:', e);
+      loadImage(attachment.url);
+    }
   }, [attachment, t, containerWidth, containerHeight]);
 
   // Handle stage click for adding pins
   const handleStageClick = (e) => {
-    // Only process clicks on the stage itself (not on pins)
     const clickedOnEmpty = e.target === e.target.getStage() || e.target.getClassName() === 'Image';
 
     if (clickedOnEmpty && currentTool === 'pin') {
       const stage = e.target.getStage();
       const pointerPosition = stage.getPointerPosition();
 
-      // Convert to relative coordinates (0-1 range)
       const relativeX = toRelative(pointerPosition.x, imageSize.width);
       const relativeY = toRelative(pointerPosition.y, imageSize.height);
 
-      // Trigger pin creation
       if (onAddPin) {
         onAddPin(relativeX, relativeY);
       }
     } else if (clickedOnEmpty) {
-      // Deselect when clicking on empty space
       setSelectedPinId(null);
     }
   };
 
-  // Handle pin click
   const handlePinClick = (pinId) => {
     setSelectedPinId(pinId);
   };
 
-  // Highlight pin from comment panel
   useEffect(() => {
     if (highlightedPinId) {
       setSelectedPinId(highlightedPinId);
@@ -115,7 +119,6 @@ function AnnotationCanvas({
         onTap={handleStageClick}
         style={{ cursor: currentTool === 'pin' ? 'crosshair' : 'default' }}
       >
-        {/* Image Layer */}
         <Layer>
           <Image
             image={image}
@@ -124,7 +127,6 @@ function AnnotationCanvas({
           />
         </Layer>
 
-        {/* Annotation Layer */}
         <Layer>
           {annotations && annotations.pins && annotations.pins.map(pin => (
             <PinMarker
@@ -142,7 +144,6 @@ function AnnotationCanvas({
         </Layer>
       </Stage>
 
-      {/* Canvas info overlay */}
       <div className="canvas-info">
         <span className="canvas-tool-indicator">
           {currentTool === 'pin' && '📍 Pin Mode - Click to add pin'}

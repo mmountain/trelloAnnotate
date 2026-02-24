@@ -8,19 +8,13 @@ var noop = function() { return []; };
 
 TrelloPowerUp.initialize({
   'card-buttons': function(t, options) {
-    console.log('Image Annotator: card-buttons requested');
     return t.card('attachments')
       .then(function(card) {
-        if (!card.attachments) {
-          console.log('Image Annotator: No attachments found on card');
-          return [];
-        }
+        if (!card.attachments) return [];
 
         var imageAttachments = card.attachments.filter(function(attachment) {
           return attachment.url && /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(attachment.url);
         });
-
-        console.log('Image Annotator: Found ' + imageAttachments.length + ' image attachments');
 
         return imageAttachments.map(function(attachment) {
           return {
@@ -35,11 +29,26 @@ TrelloPowerUp.initialize({
             }
           };
         });
-      })
-      .catch(function(err) {
-        console.error('Image Annotator: Error in card-buttons handler', err);
-        return [];
       });
+  },
+  'attachment-sections': function(t, options) {
+    // Correctly claim the attachment to allow proxying
+    return options.entries.map(function(entry) {
+      if (/\.(png|jpg|jpeg|gif|svg|webp)$/i.test(entry.url)) {
+        return {
+          id: entry.id,
+          claimed: true,
+          icon: ICON,
+          title: 'Image Annotator',
+          content: {
+            type: 'iframe',
+            url: t.signUrl('./index.html'),
+            height: 50
+          }
+        };
+      }
+      return { claimed: false };
+    });
   },
   'card-badges': noop,
   'card-detail-badges': noop,
@@ -49,21 +58,12 @@ TrelloPowerUp.initialize({
   'show-settings': noop,
   'authorization-status': function(t, options) { return { authorized: true }; },
   'show-authorization': noop,
-  'attachment-sections': function(t, options) {
-    return options.entries.map(function(entry) {
-      return {
-        id: entry.id,
-        claimed: true
-      };
-    });
-  },
   'attachment-thumbnail': noop,
   'card-back-section': noop,
   'list-actions': noop,
   'list-sorters': noop,
   'save-attachment': noop
 }, {
-  // Optional initialization options
   appName: 'Image Annotator',
   appKey: 'trello-image-annotator'
 });
