@@ -10,14 +10,14 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!window.TrelloPowerUps) {
-      setError('TrelloPowerUps library not found. Ensure this is running as a Trello Power-Up.');
+    if (!window.TrelloPowerUp) {
+      setError('TrelloPowerUp library not found. Ensure this is running as a Trello Power-Up.');
       setLoading(false);
       return;
     }
 
     try {
-      const tInstance = window.TrelloPowerUps.iframe();
+      const tInstance = window.TrelloPowerUp.iframe();
       setT(tInstance);
 
       const urlParams = new URLSearchParams(window.location.search);

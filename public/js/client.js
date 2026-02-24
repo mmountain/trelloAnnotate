@@ -1,12 +1,11 @@
-/* global TrelloPowerUps */
+/* global TrelloPowerUp */
 
-// We use a relative path for the icon, but Trello might require an absolute one in some contexts.
-// The Power-Up library usually handles relative paths by resolving them against the connector URL.
+// Use the absolute URL for the icon if possible, or ensure it's relative to the site root
 var ICON = './icon.svg';
 
 console.log('Image Annotator Power-Up initializing...');
 
-TrelloPowerUps.initialize({
+TrelloPowerUp.initialize({
   'card-buttons': function(t, options) {
     return t.card('attachments')
       .then(function(card) {
@@ -35,8 +34,7 @@ TrelloPowerUps.initialize({
   },
 
   'attachment-sections': function(t, options) {
-    // This allows showing a section directly under the attachment in the Trello UI
-    var entries = options.entries; // The attachments
+    var entries = options.entries;
     
     return entries.map(function(entry) {
       if (/\.(png|jpg|jpeg|gif|svg|webp)$/i.test(entry.url)) {
@@ -47,7 +45,7 @@ TrelloPowerUps.initialize({
           title: 'Annotations',
           content: {
             type: 'iframe',
-            url: t.signUrl('./connector.html'), // Placeholder or a summary view
+            url: t.signUrl('./connector.html'),
             height: 50
           }
         };
@@ -57,13 +55,12 @@ TrelloPowerUps.initialize({
   },
 
   'card-back-section': function(t, options) {
-    // Optional: Show a summary section on the card back
     return {
       title: 'Image Annotations',
       icon: ICON,
       content: {
         type: 'iframe',
-        url: t.signUrl('./connector.html'), // Placeholder
+        url: t.signUrl('./connector.html'),
         height: 100
       }
     };
