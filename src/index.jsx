@@ -20,7 +20,7 @@ window.TrelloPowerUps.initialize({
         }
 
         return imageAttachments.map(attachment => ({
-          icon: `${BASE_URL}/public/icon.svg`,
+          icon: `${BASE_URL}/icon.svg`,
           text: `Annotate: ${attachment.name}`,
           callback: function(t) {
             return t.modal({
@@ -30,49 +30,6 @@ window.TrelloPowerUps.initialize({
             });
           }
         }));
-      });
-  },
-
-  // Card Back Section - Show annotation summary on card back
-  'card-back-section': function(t, options) {
-    return t.card('attachments')
-      .then(function(card) {
-        const imageAttachments = card.attachments.filter(
-          a => a.url && /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(a.url)
-        );
-
-        if (imageAttachments.length === 0) {
-          return null;
-        }
-
-        // Count total annotations across all images
-        const annotationPromises = imageAttachments.map(attachment =>
-          t.get('card', 'shared', `annotation_${attachment.id}`)
-        );
-
-        return Promise.all(annotationPromises)
-          .then(function(annotationsList) {
-            const totalAnnotations = annotationsList.reduce((sum, annotations) => {
-              if (!annotations) return sum;
-              return sum +
-                (annotations.pins?.length || 0) +
-                (annotations.drawings?.length || 0) +
-                (annotations.highlights?.length || 0);
-            }, 0);
-
-            if (totalAnnotations === 0) {
-              return null;
-            }
-
-            return {
-              title: 'Image Annotations',
-              icon: `${BASE_URL}/public/icon.svg`,
-              content: {
-                type: 'text',
-                text: `${totalAnnotations} annotation(s) on ${imageAttachments.length} image(s)`
-              }
-            };
-          });
       });
   }
 });
