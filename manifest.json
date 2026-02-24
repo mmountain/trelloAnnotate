@@ -2,16 +2,16 @@
   "name": "Image Annotator",
   "details": "Annotate images on Trello cards with pins, drawings, and highlights. Comments sync to the main card.",
   "icon": {
-    "url": "./public/icon.svg"
+    "url": "https://mmountain.github.io/trelloAnnotate/public/icon.svg"
   },
-  "author": "Your Name",
+  "author": "mmountain",
   "capabilities": [
     "card-buttons",
     "card-back-section"
   ],
   "connectors": {
     "iframe": {
-      "url": "./index.html"
+      "url": "https://mmountain.github.io/trelloAnnotate/index.html"
     }
   }
 }
