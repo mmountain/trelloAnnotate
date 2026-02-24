@@ -2,22 +2,25 @@
 
 var ICON = 'https://mmountain.github.io/trelloAnnotate/icon.svg';
 
-console.log('Image Annotator Power-Up initializing...');
+console.log('Image Annotator Power-Up: Initializing...');
 
-// Minimal handlers to satisfy Trello initialization if multiple capabilities are enabled in the portal
 var noop = function() { return []; };
 
 TrelloPowerUp.initialize({
   'card-buttons': function(t, options) {
+    console.log('Image Annotator: card-buttons requested');
     return t.card('attachments')
       .then(function(card) {
+        if (!card.attachments) {
+          console.log('Image Annotator: No attachments found on card');
+          return [];
+        }
+
         var imageAttachments = card.attachments.filter(function(attachment) {
           return attachment.url && /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(attachment.url);
         });
 
-        if (imageAttachments.length === 0) {
-          return [];
-        }
+        console.log('Image Annotator: Found ' + imageAttachments.length + ' image attachments');
 
         return imageAttachments.map(function(attachment) {
           return {
@@ -32,9 +35,12 @@ TrelloPowerUp.initialize({
             }
           };
         });
+      })
+      .catch(function(err) {
+        console.error('Image Annotator: Error in card-buttons handler', err);
+        return [];
       });
   },
-  // Add no-op handlers for all other common capabilities to prevent "Not Implemented" errors
   'card-badges': noop,
   'card-detail-badges': noop,
   'board-buttons': noop,
@@ -49,4 +55,8 @@ TrelloPowerUp.initialize({
   'list-actions': noop,
   'list-sorters': noop,
   'save-attachment': noop
+}, {
+  // Optional initialization options
+  appName: 'Image Annotator',
+  appKey: 'trello-image-annotator'
 });

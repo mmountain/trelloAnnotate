@@ -10,7 +10,7 @@
   ],
   "connectors": {
     "iframe": {
-      "url": "connector.html",
+      "url": "index.html",
       "always-serve-trello-ui": true
     }
   }
