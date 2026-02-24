@@ -20,6 +20,10 @@ export default defineConfig({
           dest: '.'
         },
         {
+          src: 'public/index.html',
+          dest: '.'
+        },
+        {
           src: 'public/js',
           dest: '.'
         }
