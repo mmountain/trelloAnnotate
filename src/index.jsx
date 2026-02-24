@@ -3,7 +3,8 @@ import ReactDOM from 'react-dom/client';
 import AnnotationModal from './components/AnnotationModal';
 import './styles/main.css';
 
-const t = window.TrelloPowerUps.iframe();
+// Base URL for GitHub Pages
+const BASE_URL = 'https://mmountain.github.io/trelloAnnotate';
 
 // Card Buttons Capability - Show "Annotate" button for each image attachment
 window.TrelloPowerUps.initialize({
@@ -19,11 +20,11 @@ window.TrelloPowerUps.initialize({
         }
 
         return imageAttachments.map(attachment => ({
-          icon: './public/icon.svg',
+          icon: `${BASE_URL}/public/icon.svg`,
           text: `Annotate: ${attachment.name}`,
           callback: function(t) {
             return t.modal({
-              url: `./index.html?attachment=${attachment.id}`,
+              url: `${BASE_URL}/index.html?attachment=${attachment.id}`,
               fullscreen: true,
               title: 'Image Annotation'
             });
@@ -65,7 +66,7 @@ window.TrelloPowerUps.initialize({
 
             return {
               title: 'Image Annotations',
-              icon: './public/icon.svg',
+              icon: `${BASE_URL}/public/icon.svg`,
               content: {
                 type: 'text',
                 text: `${totalAnnotations} annotation(s) on ${imageAttachments.length} image(s)`
@@ -80,7 +81,10 @@ window.TrelloPowerUps.initialize({
 const urlParams = new URLSearchParams(window.location.search);
 const attachmentId = urlParams.get('attachment');
 
-if (attachmentId) {
+if (attachmentId && window.TrelloPowerUps) {
+  // Get the Trello iframe context
+  const t = window.TrelloPowerUps.iframe();
+
   // Get the attachment details and render the modal
   t.card('attachments')
     .then(card => {
