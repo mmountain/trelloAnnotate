@@ -27,16 +27,14 @@ function AnnotationCanvas({
 
   // Load image
   useEffect(() => {
-    console.log('AnnotationCanvas useEffect: t =', t, 'attachment =', attachment);
-    if (!attachment || !t) {
-      console.log('AnnotationCanvas useEffect: attachment or t is null, returning early.');
-      return;
-    }
+    if (!attachment || !t) return;
 
     // Helper to load image from a URL
     const loadImage = (url) => {
       console.log('AnnotationCanvas: Attempting to load image from URL:', url);
       const img = new window.Image();
+      // To prevent referrer-related blocking on some cross-origin images
+      img.referrerPolicy = 'no-referrer'; 
       img.onload = () => {
         console.log('AnnotationCanvas: Image loaded successfully:', url);
         setImage(img);
@@ -60,15 +58,49 @@ function AnnotationCanvas({
     try {
       const result = t.signUrl(attachment.url);
       
+      let finalUrl = attachment.url; // Fallback to original
+
       if (result && typeof result.then === 'function') {
         console.log('AnnotationCanvas: signUrl returned a Promise.');
-        result.then(loadImage).catch(err => {
+        result.then(resolvedUrl => {
+          finalUrl = resolvedUrl;
+          // Extract secret from hash if present and append as query param
+          try {
+            const urlObj = new URL(resolvedUrl);
+            if (urlObj.hash) {
+              const hashParams = JSON.parse(decodeURIComponent(urlObj.hash.substring(1)));
+              if (hashParams.secret) {
+                urlObj.searchParams.append('secret', hashParams.secret);
+                urlObj.hash = ''; // Clear the hash
+                finalUrl = urlObj.toString();
+              }
+            }
+          } catch (e) {
+            console.warn('AnnotationCanvas: Could not parse hash fragment for secret:', e);
+          }
+          loadImage(finalUrl);
+        }).catch(err => {
           console.error('AnnotationCanvas: Error signing URL (async):', err);
           loadImage(attachment.url); // Fallback to original URL
         });
       } else if (typeof result === 'string') {
         console.log('AnnotationCanvas: signUrl returned a synchronous string.');
-        loadImage(result);
+        finalUrl = result;
+        // Extract secret from hash if present and append as query param
+        try {
+          const urlObj = new URL(result);
+          if (urlObj.hash) {
+            const hashParams = JSON.parse(decodeURIComponent(urlObj.hash.substring(1)));
+            if (hashParams.secret) {
+              urlObj.searchParams.append('secret', hashParams.secret);
+              urlObj.hash = ''; // Clear the hash
+              finalUrl = urlObj.toString();
+            }
+          }
+        } catch (e) {
+          console.warn('AnnotationCanvas: Could not parse hash fragment for secret:', e);
+        }
+        loadImage(finalUrl);
       } else {
         console.error('AnnotationCanvas: signUrl returned an unexpected type:', result);
         loadImage(attachment.url); // Fallback to original URL
@@ -131,7 +163,7 @@ function AnnotationCanvas({
           <Image
             image={image}
             width={imageSize.width}
-            height={imageSize.height}
+            height={image.height}
           />
         </Layer>
 
