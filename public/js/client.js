@@ -32,23 +32,39 @@ TrelloPowerUp.initialize({
       });
   },
   'attachment-sections': function(t, options) {
-    // Correctly claim the attachment to allow proxying
-    return options.entries.map(function(entry) {
+    // Trello expects an array of objects, one for each entry in options.entries
+    // We must ensure all objects have an 'id' and a 'claimed' property
+    var entries = options.entries;
+    
+    // Use a Promise to resolve everything before returning to Trello
+    return Promise.all(entries.map(function(entry) {
       if (/\.(png|jpg|jpeg|gif|svg|webp)$/i.test(entry.url)) {
-        return {
+        // Resolve the signed URL first
+        return t.signUrl('./index.html')
+          .then(function(signedUrl) {
+            return {
+              id: entry.id, // Must be unique
+              claimed: true,
+              icon: ICON,
+              title: 'Image Annotator',
+              content: {
+                type: 'iframe',
+                url: signedUrl,
+                height: 50
+              }
+            };
+          })
+          .catch(function() {
+            // Fallback if signUrl fails
+            return { id: entry.id, claimed: false };
+          });
+      } else {
+        return Promise.resolve({
           id: entry.id,
-          claimed: true,
-          icon: ICON,
-          title: 'Image Annotator',
-          content: {
-            type: 'iframe',
-            url: t.signUrl('./index.html'),
-            height: 50
-          }
-        };
+          claimed: false
+        });
       }
-      return { claimed: false };
-    });
+    }));
   },
   'card-badges': noop,
   'card-detail-badges': noop,
