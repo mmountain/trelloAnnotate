@@ -10,7 +10,7 @@
   ],
   "connectors": {
     "iframe": {
-      "url": "https://mmountain.github.io/trelloAnnotate/index.html"
+      "url": "https://mmountain.github.io/trelloAnnotate/connector.html"
     }
   }
 }

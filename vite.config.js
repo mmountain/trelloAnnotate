@@ -14,6 +14,14 @@ export default defineConfig({
         {
           src: 'public/icon.svg',
           dest: '.'
+        },
+        {
+          src: 'public/connector.html',
+          dest: '.'
+        },
+        {
+          src: 'public/js',
+          dest: '.'
         }
       ]
     })
@@ -23,7 +31,7 @@ export default defineConfig({
     outDir: 'dist',
     rollupOptions: {
       input: {
-        main: './index.html'
+        modal: './modal.html'
       }
     }
   },
