@@ -27,7 +27,11 @@ function AnnotationCanvas({
 
   // Load image
   useEffect(() => {
-    if (!attachment || !t) return;
+    console.log('AnnotationCanvas useEffect: t =', t, 'attachment =', attachment);
+    if (!attachment || !t) {
+      console.log('AnnotationCanvas useEffect: attachment or t is null, returning early.');
+      return;
+    }
 
     // Helper to load image from a URL
     const loadImage = (url) => {
