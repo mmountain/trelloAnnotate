@@ -27,7 +27,11 @@ function AnnotationCanvas({
 
   // Load image
   useEffect(() => {
-    if (!attachment || !t) return;
+    console.log('AnnotationCanvas useEffect: t =', t, 'attachment =', attachment);
+    if (!attachment || !t) {
+      console.log('AnnotationCanvas useEffect: attachment or t is null, returning early.');
+      return;
+    }
 
     // Helper to load image from a URL
     const loadImage = (url) => {
@@ -55,52 +59,43 @@ function AnnotationCanvas({
       img.src = url;
     };
 
+    const processAndLoadImage = (originalSignedUrl) => {
+      let imageUrlToLoad = originalSignedUrl;
+      try {
+        const urlObj = new URL(originalSignedUrl);
+        // Check if there's a hash fragment that contains Trello's secret/context
+        if (urlObj.hash) {
+          const hashContent = decodeURIComponent(urlObj.hash.substring(1));
+          const hashParams = JSON.parse(hashContent);
+          
+          if (hashParams.secret) {
+            urlObj.searchParams.append('secret', hashParams.secret);
+          }
+          if (hashParams.context) {
+            // Append context parameters as well if needed by the server, or just the secret
+            // For now, only append secret as it's the critical part for auth
+          }
+          urlObj.hash = ''; // Clear the hash fragment after processing
+          imageUrlToLoad = urlObj.toString();
+        }
+      } catch (e) {
+        console.warn('AnnotationCanvas: Could not parse hash fragment for secret or context:', e);
+      }
+      loadImage(imageUrlToLoad);
+    };
+
     try {
       const result = t.signUrl(attachment.url);
       
-      let finalUrl = attachment.url; // Fallback to original
-
       if (result && typeof result.then === 'function') {
         console.log('AnnotationCanvas: signUrl returned a Promise.');
-        result.then(resolvedUrl => {
-          finalUrl = resolvedUrl;
-          // Extract secret from hash if present and append as query param
-          try {
-            const urlObj = new URL(resolvedUrl);
-            if (urlObj.hash) {
-              const hashParams = JSON.parse(decodeURIComponent(urlObj.hash.substring(1)));
-              if (hashParams.secret) {
-                urlObj.searchParams.append('secret', hashParams.secret);
-                urlObj.hash = ''; // Clear the hash
-                finalUrl = urlObj.toString();
-              }
-            }
-          } catch (e) {
-            console.warn('AnnotationCanvas: Could not parse hash fragment for secret:', e);
-          }
-          loadImage(finalUrl);
-        }).catch(err => {
+        result.then(processAndLoadImage).catch(err => {
           console.error('AnnotationCanvas: Error signing URL (async):', err);
-          loadImage(attachment.url); // Fallback to original URL
+          loadImage(attachment.url); // Fallback to original URL if signing fails
         });
       } else if (typeof result === 'string') {
         console.log('AnnotationCanvas: signUrl returned a synchronous string.');
-        finalUrl = result;
-        // Extract secret from hash if present and append as query param
-        try {
-          const urlObj = new URL(result);
-          if (urlObj.hash) {
-            const hashParams = JSON.parse(decodeURIComponent(urlObj.hash.substring(1)));
-            if (hashParams.secret) {
-              urlObj.searchParams.append('secret', hashParams.secret);
-              urlObj.hash = ''; // Clear the hash
-              finalUrl = urlObj.toString();
-            }
-          }
-        } catch (e) {
-          console.warn('AnnotationCanvas: Could not parse hash fragment for secret:', e);
-        }
-        loadImage(finalUrl);
+        processAndLoadImage(result);
       } else {
         console.error('AnnotationCanvas: signUrl returned an unexpected type:', result);
         loadImage(attachment.url); // Fallback to original URL
@@ -120,7 +115,7 @@ function AnnotationCanvas({
       const pointerPosition = stage.getPointerPosition();
 
       const relativeX = toRelative(pointerPosition.x, imageSize.width);
-      const relativeY = toRelative(pointerPosition.y, imageSize.height);
+      const relativeY = toRelative(pointerY, imageSize.height);
 
       if (onAddPin) {
         onAddPin(relativeX, relativeY);
