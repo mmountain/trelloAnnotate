@@ -36,6 +36,21 @@ export default defineConfig({
     rollupOptions: {
       input: {
         modal: './modal.html'
+      },
+      output: {
+        entryFileNames: `assets/[name]-[hash].js`,
+        chunkFileNames: `assets/[name]-[hash].js`,
+        assetFileNames: `assets/[name]-[hash].[ext]`,
+        // Remove 'crossorigin' attribute from generated script tags
+        // This can resolve 'cross-origin read blocking' errors
+        // especially on GitHub Pages when Content-Type sniffing is an issue.
+        // It might be added by default for modules, so we're trying to counteract it.
+        sanitizeFileName: (fileName) => {
+          if (fileName.endsWith('.js') && fileName.includes('modal')) {
+            return fileName; // We don't want to change the filename, but remove 'crossorigin' later.
+          }
+          return fileName;
+        }
       }
     }
   },
