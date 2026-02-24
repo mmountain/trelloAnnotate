@@ -31,8 +31,10 @@ function AnnotationCanvas({
 
     // Helper to load image from a URL
     const loadImage = (url) => {
+      console.log('AnnotationCanvas: Attempting to load image from URL:', url);
       const img = new window.Image();
       img.onload = () => {
+        console.log('AnnotationCanvas: Image loaded successfully:', url);
         setImage(img);
 
         const scaleX = (containerWidth - 40) / img.width;
@@ -46,28 +48,30 @@ function AnnotationCanvas({
         });
       };
       img.onerror = (err) => {
-        console.error('Failed to load image:', err);
+        console.error('AnnotationCanvas: Failed to load image:', url, err);
       };
       img.src = url;
     };
 
     try {
-      // t.signUrl can be synchronous or asynchronous depending on the environment
       const result = t.signUrl(attachment.url);
       
       if (result && typeof result.then === 'function') {
+        console.log('AnnotationCanvas: signUrl returned a Promise.');
         result.then(loadImage).catch(err => {
-          console.error('Error signing URL (async):', err);
-          loadImage(attachment.url); // Fallback
+          console.error('AnnotationCanvas: Error signing URL (async):', err);
+          loadImage(attachment.url); // Fallback to original URL
         });
       } else if (typeof result === 'string') {
+        console.log('AnnotationCanvas: signUrl returned a synchronous string.');
         loadImage(result);
       } else {
-        loadImage(attachment.url);
+        console.error('AnnotationCanvas: signUrl returned an unexpected type:', result);
+        loadImage(attachment.url); // Fallback to original URL
       }
     } catch (e) {
-      console.error('Exception calling signUrl:', e);
-      loadImage(attachment.url);
+      console.error('AnnotationCanvas: Exception calling signUrl:', e);
+      loadImage(attachment.url); // Fallback to original URL
     }
   }, [attachment, t, containerWidth, containerHeight]);
 
