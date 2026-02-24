@@ -8,8 +8,7 @@ import { toRelative } from '../utils/annotations';
  * Handles image display and pin annotations
  */
 function AnnotationCanvas({
-  imageUrl,
-  imageName,
+  attachment,
   annotations,
   containerWidth,
   containerHeight,
@@ -27,8 +26,20 @@ function AnnotationCanvas({
 
   // Load image
   useEffect(() => {
+    if (!attachment) return;
+
     const img = new window.Image();
-    img.crossOrigin = 'Anonymous';
+    
+    // Choose the best URL: Prefer the largest preview as they are often
+    // served with better CORS support than the direct download link
+    let sourceUrl = attachment.url;
+    if (attachment.previews && attachment.previews.length > 0) {
+      const largestPreview = [...attachment.previews].sort((a, b) => b.width - a.width)[0];
+      if (largestPreview) {
+        sourceUrl = largestPreview.url;
+      }
+    }
+
     img.onload = () => {
       setImage(img);
 
@@ -46,8 +57,8 @@ function AnnotationCanvas({
     img.onerror = (err) => {
       console.error('Failed to load image:', err);
     };
-    img.src = imageUrl;
-  }, [imageUrl, containerWidth, containerHeight]);
+    img.src = sourceUrl;
+  }, [attachment, containerWidth, containerHeight]);
 
   // Handle stage click for adding pins
   const handleStageClick = (e) => {
@@ -88,7 +99,7 @@ function AnnotationCanvas({
     return (
       <div className="canvas-loading">
         <div className="spinner"></div>
-        <p>Loading canvas...</p>
+        <p>Loading image...</p>
       </div>
     );
   }

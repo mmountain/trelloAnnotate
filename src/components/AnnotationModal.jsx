@@ -177,8 +177,7 @@ function AnnotationModal({ t, attachment }) {
             </div>
           ) : (
             <AnnotationCanvas
-              imageUrl={attachment.url}
-              imageName={attachment.name}
+              attachment={attachment}
               annotations={annotations}
               containerWidth={containerSize.width}
               containerHeight={containerSize.height}
