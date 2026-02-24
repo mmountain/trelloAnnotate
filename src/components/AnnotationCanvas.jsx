@@ -8,6 +8,7 @@ import { toRelative } from '../utils/annotations';
  * Handles image display and pin annotations
  */
 function AnnotationCanvas({
+  t,
   attachment,
   annotations,
   containerWidth,
@@ -26,39 +27,39 @@ function AnnotationCanvas({
 
   // Load image
   useEffect(() => {
-    if (!attachment) return;
+    if (!attachment || !t) return;
 
-    const img = new window.Image();
-    
-    // Choose the best URL: Prefer the largest preview as they are often
-    // served with better CORS support than the direct download link
-    let sourceUrl = attachment.url;
-    if (attachment.previews && attachment.previews.length > 0) {
-      const largestPreview = [...attachment.previews].sort((a, b) => b.width - a.width)[0];
-      if (largestPreview) {
-        sourceUrl = largestPreview.url;
-      }
-    }
+    // Use Trello's signUrl to bypass CORS and 401 Unauthorized errors
+    // Signing the URL creates a time-limited proxy link with necessary headers
+    t.signUrl(attachment.url)
+      .then(signedUrl => {
+        const img = new window.Image();
+        
+        img.onload = () => {
+          setImage(img);
 
-    img.onload = () => {
-      setImage(img);
+          // Calculate scale to fit container
+          const scaleX = (containerWidth - 40) / img.width;
+          const scaleY = (containerHeight - 40) / img.height;
+          const newScale = Math.min(scaleX, scaleY, 1); // Don't scale up
 
-      // Calculate scale to fit container
-      const scaleX = (containerWidth - 40) / img.width;
-      const scaleY = (containerHeight - 40) / img.height;
-      const newScale = Math.min(scaleX, scaleY, 1); // Don't scale up
-
-      setScale(newScale);
-      setImageSize({
-        width: img.width * newScale,
-        height: img.height * newScale
+          setScale(newScale);
+          setImageSize({
+            width: img.width * newScale,
+            height: img.height * newScale
+          });
+        };
+        
+        img.onerror = (err) => {
+          console.error('Failed to load image:', err);
+        };
+        
+        img.src = signedUrl;
+      })
+      .catch(err => {
+        console.error('Error signing attachment URL:', err);
       });
-    };
-    img.onerror = (err) => {
-      console.error('Failed to load image:', err);
-    };
-    img.src = sourceUrl;
-  }, [attachment, containerWidth, containerHeight]);
+  }, [attachment, t, containerWidth, containerHeight]);
 
   // Handle stage click for adding pins
   const handleStageClick = (e) => {

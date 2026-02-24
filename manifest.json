@@ -6,7 +6,8 @@
   },
   "author": "mmountain",
   "capabilities": [
-    "card-buttons"
+    "card-buttons",
+    "attachment-sections"
   ],
   "connectors": {
     "iframe": {

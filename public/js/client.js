@@ -49,7 +49,14 @@ TrelloPowerUp.initialize({
   'show-settings': noop,
   'authorization-status': function(t, options) { return { authorized: true }; },
   'show-authorization': noop,
-  'attachment-sections': noop,
+  'attachment-sections': function(t, options) {
+    return options.entries.map(function(entry) {
+      return {
+        id: entry.id,
+        claimed: true
+      };
+    });
+  },
   'attachment-thumbnail': noop,
   'card-back-section': noop,
   'list-actions': noop,
