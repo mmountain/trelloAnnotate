@@ -1,7 +1,6 @@
 /* global TrelloPowerUp */
 
-// Use the absolute URL for the icon if possible, or ensure it's relative to the site root
-var ICON = './icon.svg';
+var ICON = 'https://mmountain.github.io/trelloAnnotate/icon.svg';
 
 console.log('Image Annotator Power-Up initializing...');
 
@@ -31,38 +30,5 @@ TrelloPowerUp.initialize({
           };
         });
       });
-  },
-
-  'attachment-sections': function(t, options) {
-    var entries = options.entries;
-    
-    return entries.map(function(entry) {
-      if (/\.(png|jpg|jpeg|gif|svg|webp)$/i.test(entry.url)) {
-        return {
-          id: 'annotation-' + entry.id,
-          claimed: true,
-          icon: ICON,
-          title: 'Annotations',
-          content: {
-            type: 'iframe',
-            url: t.signUrl('./connector.html'),
-            height: 50
-          }
-        };
-      }
-      return { claimed: false };
-    });
-  },
-
-  'card-back-section': function(t, options) {
-    return {
-      title: 'Image Annotations',
-      icon: ICON,
-      content: {
-        type: 'iframe',
-        url: t.signUrl('./connector.html'),
-        height: 100
-      }
-    };
   }
 });
