@@ -17,7 +17,10 @@ function App() {
     }
 
     try {
-      const tInstance = window.TrelloPowerUp.iframe();
+      const tInstance = window.TrelloPowerUp.iframe({
+        appKey: 'cdfdc22c8653b60a6b7a11f38be79ae1',
+        appName: 'Image Annotator'
+      });
       setT(tInstance);
 
       const urlParams = new URLSearchParams(window.location.search);
