@@ -124,6 +124,8 @@ function AnnotationCanvas({
                 urlObj.searchParams.set('context', contextValue);
               }
               urlObj.hash = ''; // Clear the hash fragment after processing
+              
+              // ENSURE the URL is correctly reconstructed
               imageUrlToLoad = urlObj.toString();
               console.log('AnnotationCanvas: Extracted parameters from JSON hash fragment.');
             } else if (hashContent.includes('=')) {
@@ -144,6 +146,7 @@ function AnnotationCanvas({
         console.warn('AnnotationCanvas: URL parsing failed, using original string:', e);
       }
       
+      console.log('AnnotationCanvas: Final URL to load:', imageUrlToLoad);
       loadImage(imageUrlToLoad);
     };
 

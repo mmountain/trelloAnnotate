@@ -246,7 +246,7 @@ function AnnotationModal({ t, attachment }) {
 
       {/* Footer */}
       <div className="annotation-modal-footer">
-        <p className="footer-text">Image Annotator v1.0.2 - Phase 2</p>
+        <p className="footer-text">Image Annotator v1.0.4 - Phase 2</p>
       </div>
     </div>
   );
