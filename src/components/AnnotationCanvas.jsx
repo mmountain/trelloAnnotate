@@ -38,9 +38,9 @@ function AnnotationCanvas({
       console.log('AnnotationCanvas: Attempting to load image from URL:', url);
       const img = new window.Image();
       
-      // Allow CORS for images so we can potentially use canvas export features later
-      // and because some environments require it for canvas drawing
-      img.crossOrigin = 'Anonymous';
+      // Try loading WITHOUT crossOrigin first. Trello's download endpoints 
+      // often don't support CORS or require specific auth that doesn't play 
+      // well with 'Anonymous' crossOrigin requests.
       
       img.onload = () => {
         console.log('AnnotationCanvas: Image loaded successfully:', url, 'Dimensions:', img.width, 'x', img.height);
@@ -62,13 +62,17 @@ function AnnotationCanvas({
         });
       };
       img.onerror = (err) => {
-        console.error('AnnotationCanvas: Failed to load image:', url);
-        // If Anonymous fails (CORS), try loading without crossOrigin as a fallback
-        if (img.crossOrigin === 'Anonymous') {
-          console.log('AnnotationCanvas: Retrying without crossOrigin...');
+        console.error('AnnotationCanvas: Failed to load image without CORS:', url);
+        
+        // If it fails without CORS, try WITH Anonymous as a last resort
+        // (though usually it's the other way around, for Trello specifically 
+        // direct loading is often required)
+        if (!img.crossOrigin) {
+          console.log('AnnotationCanvas: Retrying with crossOrigin = Anonymous...');
           const retryImg = new window.Image();
+          retryImg.crossOrigin = 'Anonymous';
           retryImg.onload = () => {
-            console.log('AnnotationCanvas: Image loaded successfully without CORS:', url);
+            console.log('AnnotationCanvas: Image loaded successfully with CORS:', url);
             setImage(retryImg);
             
             const effectiveWidth = containerWidth || window.innerWidth * 0.7;
@@ -84,7 +88,7 @@ function AnnotationCanvas({
             });
           };
           retryImg.onerror = () => {
-            console.error('AnnotationCanvas: Final failure loading image:', url);
+            console.error('AnnotationCanvas: Final failure loading image even with CORS:', url);
           };
           retryImg.src = url;
         }
