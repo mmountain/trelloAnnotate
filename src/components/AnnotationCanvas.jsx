@@ -110,19 +110,23 @@ function AnnotationCanvas({
               const hashParams = JSON.parse(hashContent);
               
               if (hashParams.secret) {
-                urlObj.searchParams.append('secret', hashParams.secret);
+                urlObj.searchParams.set('secret', hashParams.secret);
               }
               if (hashParams.context) {
-                urlObj.searchParams.append('context', hashParams.context);
+                // If context is an object, stringify it, otherwise use it as is
+                const contextValue = typeof hashParams.context === 'object' 
+                  ? JSON.stringify(hashParams.context) 
+                  : hashParams.context;
+                urlObj.searchParams.set('context', contextValue);
               }
               urlObj.hash = ''; // Clear the hash fragment after processing
               imageUrlToLoad = urlObj.toString();
-              console.log('AnnotationCanvas: Extracted secret/context from hash fragment.');
+              console.log('AnnotationCanvas: Extracted parameters from JSON hash fragment.');
             } else if (hashContent.includes('=')) {
               // Handle key=value format in hash if it exists
               const params = new URLSearchParams(hashContent);
               params.forEach((value, key) => {
-                urlObj.searchParams.append(key, value);
+                urlObj.searchParams.set(key, value);
               });
               urlObj.hash = '';
               imageUrlToLoad = urlObj.toString();
