@@ -40,7 +40,8 @@ TrelloPowerUp.initialize({
     return Promise.all(entries.map(function(entry) {
       if (/\.(png|jpg|jpeg|gif|svg|webp)$/i.test(entry.url)) {
         // Resolve the signed URL first
-        return t.signUrl('./index.html')
+        // Wrap in Promise.resolve because t.signUrl can return a string or a Promise
+        return Promise.resolve(t.signUrl('./index.html'))
           .then(function(signedUrl) {
             return {
               id: entry.id, // Must be unique
@@ -54,7 +55,8 @@ TrelloPowerUp.initialize({
               }
             };
           })
-          .catch(function() {
+          .catch(function(err) {
+            console.error('Error in attachment-sections signUrl:', err);
             // Fallback if signUrl fails
             return { id: entry.id, claimed: false };
           });

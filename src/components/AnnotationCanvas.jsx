@@ -37,16 +37,24 @@ function AnnotationCanvas({
     const loadImage = (url) => {
       console.log('AnnotationCanvas: Attempting to load image from URL:', url);
       const img = new window.Image();
-      // To prevent referrer-related blocking on some cross-origin images
-      img.referrerPolicy = 'no-referrer'; 
+      
+      // Allow CORS for images so we can potentially use canvas export features later
+      // and because some environments require it for canvas drawing
+      img.crossOrigin = 'Anonymous';
+      
       img.onload = () => {
-        console.log('AnnotationCanvas: Image loaded successfully:', url);
+        console.log('AnnotationCanvas: Image loaded successfully:', url, 'Dimensions:', img.width, 'x', img.height);
         setImage(img);
 
-        const scaleX = (containerWidth - 40) / img.width;
-        const scaleY = (containerHeight - 40) / img.height;
+        // Avoid division by zero if container size isn't measured yet
+        const effectiveWidth = containerWidth || window.innerWidth * 0.7;
+        const effectiveHeight = containerHeight || window.innerHeight * 0.8;
+
+        const scaleX = (effectiveWidth - 40) / img.width;
+        const scaleY = (effectiveHeight - 40) / img.height;
         const newScale = Math.min(scaleX, scaleY, 1);
 
+        console.log('AnnotationCanvas: Calculated scale:', newScale);
         setScale(newScale);
         setImageSize({
           width: img.width * newScale,
@@ -54,33 +62,80 @@ function AnnotationCanvas({
         });
       };
       img.onerror = (err) => {
-        console.error('AnnotationCanvas: Failed to load image:', url, err);
+        console.error('AnnotationCanvas: Failed to load image:', url);
+        // If Anonymous fails (CORS), try loading without crossOrigin as a fallback
+        if (img.crossOrigin === 'Anonymous') {
+          console.log('AnnotationCanvas: Retrying without crossOrigin...');
+          const retryImg = new window.Image();
+          retryImg.onload = () => {
+            console.log('AnnotationCanvas: Image loaded successfully without CORS:', url);
+            setImage(retryImg);
+            
+            const effectiveWidth = containerWidth || window.innerWidth * 0.7;
+            const effectiveHeight = containerHeight || window.innerHeight * 0.8;
+            const scaleX = (effectiveWidth - 40) / retryImg.width;
+            const scaleY = (effectiveHeight - 40) / retryImg.height;
+            const newScale = Math.min(scaleX, scaleY, 1);
+            
+            setScale(newScale);
+            setImageSize({
+              width: retryImg.width * newScale,
+              height: retryImg.height * newScale
+            });
+          };
+          retryImg.onerror = () => {
+            console.error('AnnotationCanvas: Final failure loading image:', url);
+          };
+          retryImg.src = url;
+        }
       };
       img.src = url;
     };
 
     const processAndLoadImage = (originalSignedUrl) => {
+      console.log('AnnotationCanvas: Processing signed URL:', originalSignedUrl);
       let imageUrlToLoad = originalSignedUrl;
+      
       try {
-        const urlObj = new URL(originalSignedUrl);
+        // Handle relative URLs if any
+        const baseUrl = window.location.origin;
+        const urlObj = new URL(originalSignedUrl, baseUrl);
+        
         // Check if there's a hash fragment that contains Trello's secret/context
-        if (urlObj.hash) {
-          const hashContent = decodeURIComponent(urlObj.hash.substring(1));
-          const hashParams = JSON.parse(hashContent);
-          
-          if (hashParams.secret) {
-            urlObj.searchParams.append('secret', hashParams.secret);
+        if (urlObj.hash && urlObj.hash.length > 1) {
+          try {
+            const hashContent = decodeURIComponent(urlObj.hash.substring(1));
+            // Only try to parse if it looks like JSON
+            if (hashContent.startsWith('{')) {
+              const hashParams = JSON.parse(hashContent);
+              
+              if (hashParams.secret) {
+                urlObj.searchParams.append('secret', hashParams.secret);
+              }
+              if (hashParams.context) {
+                urlObj.searchParams.append('context', hashParams.context);
+              }
+              urlObj.hash = ''; // Clear the hash fragment after processing
+              imageUrlToLoad = urlObj.toString();
+              console.log('AnnotationCanvas: Extracted secret/context from hash fragment.');
+            } else if (hashContent.includes('=')) {
+              // Handle key=value format in hash if it exists
+              const params = new URLSearchParams(hashContent);
+              params.forEach((value, key) => {
+                urlObj.searchParams.append(key, value);
+              });
+              urlObj.hash = '';
+              imageUrlToLoad = urlObj.toString();
+              console.log('AnnotationCanvas: Extracted params from non-JSON hash fragment.');
+            }
+          } catch (hashError) {
+            console.warn('AnnotationCanvas: Could not parse hash fragment, using original URL:', hashError);
           }
-          if (hashParams.context) {
-            // Append context parameters as well if needed by the server, or just the secret
-            // For now, only append secret as it's the critical part for auth
-          }
-          urlObj.hash = ''; // Clear the hash fragment after processing
-          imageUrlToLoad = urlObj.toString();
         }
       } catch (e) {
-        console.warn('AnnotationCanvas: Could not parse hash fragment for secret or context:', e);
+        console.warn('AnnotationCanvas: URL parsing failed, using original string:', e);
       }
+      
       loadImage(imageUrlToLoad);
     };
 
@@ -115,7 +170,7 @@ function AnnotationCanvas({
       const pointerPosition = stage.getPointerPosition();
 
       const relativeX = toRelative(pointerPosition.x, imageSize.width);
-      const relativeY = toRelative(pointerY, imageSize.height);
+      const relativeY = toRelative(pointerPosition.y, imageSize.height);
 
       if (onAddPin) {
         onAddPin(relativeX, relativeY);
@@ -158,7 +213,7 @@ function AnnotationCanvas({
           <Image
             image={image}
             width={imageSize.width}
-            height={image.height}
+            height={imageSize.height}
           />
         </Layer>
 
