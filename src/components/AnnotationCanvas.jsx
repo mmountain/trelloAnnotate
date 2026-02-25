@@ -60,7 +60,7 @@ function AnnotationCanvas({
     // api.trello.com supports CORS and the redirect target (CDN) also allows it.
     if (TRELLO_API_KEY) {
       t.getRestApi()
-        .then(api => api.getToken())
+        .getToken()
         .then(token => {
           const apiUrl = attachment.url.replace('https://trello.com/', 'https://api.trello.com/')
             + '?key=' + TRELLO_API_KEY + '&token=' + token;
