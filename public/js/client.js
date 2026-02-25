@@ -2,7 +2,7 @@
 
 var ICON = 'https://mmountain.github.io/trelloAnnotate/icon.svg';
 
-console.log('Image Annotator Power-Up: Initializing v1.0.12...');
+console.log('Image Annotator Power-Up: Initializing v1.0.13...');
 
 var noop = function() { return []; };
 

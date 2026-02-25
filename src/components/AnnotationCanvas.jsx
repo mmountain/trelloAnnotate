@@ -92,23 +92,28 @@ function AnnotationCanvas({
   }, [attachment, t]);
 
   // Handle authorize button click — must be a user gesture so the popup is allowed
+  // authorize() triggers the OAuth consent popup (requires user gesture).
+  // getToken() only retrieves an already-stored token — it does NOT show a popup.
   const handleAuthorize = () => {
-    console.log('AnnotationCanvas: Authorize button clicked, calling getToken()');
-    t.getRestApi().getToken()
+    console.log('AnnotationCanvas: Authorize button clicked, calling authorize()');
+    const restApi = t.getRestApi();
+    restApi.authorize({ expiration: 'never' })
+      .then(() => {
+        console.log('AnnotationCanvas: authorize() resolved, fetching token');
+        return restApi.getToken();
+      })
       .then(tok => {
         console.log('AnnotationCanvas: getToken() resolved, token =', tok ? 'yes' : 'null/undefined');
         if (tok) {
           setAuthState('loading');
           loadWithToken(tok);
         } else {
-          // Token still not available — try direct load as last resort
-          console.warn('AnnotationCanvas: getToken() returned null, falling back to direct load');
+          console.warn('AnnotationCanvas: token still null after authorize, falling back to direct load');
           applyImageUrl(attachment.url);
         }
       })
       .catch(err => {
-        console.error('AnnotationCanvas: getToken() failed:', err);
-        // Fall back to direct load
+        console.error('AnnotationCanvas: authorize() failed:', err);
         applyImageUrl(attachment.url);
       });
   };
