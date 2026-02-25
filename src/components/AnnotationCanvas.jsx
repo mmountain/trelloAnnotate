@@ -5,7 +5,7 @@ import { toRelative } from '../utils/annotations';
 
 // Your Trello API key from https://trello.com/app-key
 // Required so the modal can download private attachment images via the REST API.
-const TRELLO_API_KEY = '';
+const TRELLO_API_KEY = 'cdfdc22c8653b60a6b7a11f38be79ae1';
 
 /**
  * Annotation canvas component using Konva for rendering
