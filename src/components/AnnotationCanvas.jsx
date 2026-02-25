@@ -4,7 +4,6 @@ import PinMarker from './PinMarker';
 import { toRelative } from '../utils/annotations';
 
 // Your Trello API key from https://trello.com/app-key
-// Required so the modal can download private attachment images via the REST API.
 const TRELLO_API_KEY = 'cdfdc22c8653b60a6b7a11f38be79ae1';
 
 /**
@@ -25,16 +24,15 @@ function AnnotationCanvas({
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const [selectedPinId, setSelectedPinId] = useState(null);
   const [hoveredPinId, setHoveredPinId] = useState(null);
-  // Auth states: 'checking' | 'auth-needed' | 'loading' | 'done'
+  // 'checking' | 'auth-needed' | 'loading' | 'done'
   const [authState, setAuthState] = useState('checking');
-  const [authToken, setAuthToken] = useState(null);
-  const [useDirectLoad, setUseDirectLoad] = useState(!TRELLO_API_KEY);
 
   const stageRef = useRef();
-  const objectUrlRef = useRef(null);
 
-  // Helper: create an Image element from a URL and update canvas state
+  // Load image from any URL. Uses img.src (not fetch) so CORS is not enforced
+  // for display. Canvas becomes tainted for pixel-readback but display works fine.
   const applyImageUrl = (url) => {
+    console.log('AnnotationCanvas: Loading image from', url.replace(/token=[^&]+/, 'token=***'));
     const img = new window.Image();
     img.onload = () => {
       setImage(img);
@@ -43,104 +41,75 @@ function AnnotationCanvas({
       const scaleX = (effectiveWidth - 40) / img.width;
       const scaleY = (effectiveHeight - 40) / img.height;
       const newScale = Math.min(scaleX, scaleY, 1);
-      setImageSize({
-        width: img.width * newScale,
-        height: img.height * newScale
-      });
+      setImageSize({ width: img.width * newScale, height: img.height * newScale });
       setAuthState('done');
     };
     img.onerror = () => {
-      console.error('AnnotationCanvas: Failed to load image:', url);
+      console.error('AnnotationCanvas: Failed to load image:', url.replace(/token=[^&]+/, 'token=***'));
     };
     img.src = url;
   };
 
-  // Helper: fetch image via Trello REST API and display as blob URL
+  // Build authenticated API URL and load via img.src
   const loadWithToken = (token) => {
+    console.log('AnnotationCanvas: Got token, building authenticated URL');
     const apiUrl = attachment.url.replace('https://trello.com/', 'https://api.trello.com/')
       + '?key=' + TRELLO_API_KEY + '&token=' + token;
-
-    fetch(apiUrl)
-      .then(r => {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.blob();
-      })
-      .then(blob => {
-        if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
-        objectUrlRef.current = URL.createObjectURL(blob);
-        applyImageUrl(objectUrlRef.current);
-      })
-      .catch(err => {
-        console.error('AnnotationCanvas: REST API fetch failed:', err);
-        applyImageUrl(attachment.url);
-      });
+    applyImageUrl(apiUrl);
   };
 
-  // Step 1: On mount, check if already authorized. If so, get token and load image.
-  // If not, show authorize button (getToken() needs a user gesture to open the popup).
+  // On mount: check if already authorized. If so, load immediately.
+  // If not, show the Authorize button (getToken needs a user gesture for the popup).
   useEffect(() => {
     if (!attachment || !t) return;
 
     if (!TRELLO_API_KEY) {
-      setUseDirectLoad(true);
+      applyImageUrl(attachment.url);
       return;
     }
 
     t.getRestApi().isAuthorized()
       .then(isAuth => {
+        console.log('AnnotationCanvas: isAuthorized =', isAuth);
         if (isAuth) {
           return t.getRestApi().getToken().then(tok => {
+            console.log('AnnotationCanvas: token received =', tok ? 'yes' : 'null/undefined');
             if (tok) {
-              setAuthToken(tok);
+              loadWithToken(tok);
             } else {
-              setUseDirectLoad(true);
+              // Authorized but no token — fall back to direct
+              applyImageUrl(attachment.url);
             }
           });
         } else {
           setAuthState('auth-needed');
         }
       })
-      .catch(() => {
+      .catch(err => {
+        console.error('AnnotationCanvas: isAuthorized check failed:', err);
         setAuthState('auth-needed');
       });
-
-    return () => {
-      if (objectUrlRef.current) {
-        URL.revokeObjectURL(objectUrlRef.current);
-        objectUrlRef.current = null;
-      }
-    };
   }, [attachment, t]);
-
-  // Step 2: Load image when we have a token or are using direct load
-  useEffect(() => {
-    if (!attachment) return;
-    if (TRELLO_API_KEY && !authToken && !useDirectLoad) return;
-
-    setImage(null);
-    setImageSize({ width: 0, height: 0 });
-
-    if (TRELLO_API_KEY && authToken) {
-      loadWithToken(authToken);
-    } else {
-      applyImageUrl(attachment.url);
-    }
-  }, [attachment, authToken, useDirectLoad, containerWidth, containerHeight]);
 
   // Handle authorize button click — must be a user gesture so the popup is allowed
   const handleAuthorize = () => {
+    console.log('AnnotationCanvas: Authorize button clicked, calling getToken()');
     t.getRestApi().getToken()
       .then(tok => {
+        console.log('AnnotationCanvas: getToken() resolved, token =', tok ? 'yes' : 'null/undefined');
         if (tok) {
           setAuthState('loading');
-          setAuthToken(tok);
+          loadWithToken(tok);
         } else {
-          setUseDirectLoad(true);
+          // Token still not available — try direct load as last resort
+          console.warn('AnnotationCanvas: getToken() returned null, falling back to direct load');
+          applyImageUrl(attachment.url);
         }
       })
       .catch(err => {
-        console.error('AnnotationCanvas: Authorization failed:', err);
-        setUseDirectLoad(true);
+        console.error('AnnotationCanvas: getToken() failed:', err);
+        // Fall back to direct load
+        applyImageUrl(attachment.url);
       });
   };
 
