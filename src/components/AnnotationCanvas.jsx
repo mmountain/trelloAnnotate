@@ -29,10 +29,10 @@ function AnnotationCanvas({
 
   const stageRef = useRef();
 
-  // Load image from any URL. Uses img.src (not fetch) so CORS is not enforced
-  // for display. Canvas becomes tainted for pixel-readback but display works fine.
+  // Load image from any URL via img.src (bypasses CORS for display-only use)
   const applyImageUrl = (url) => {
-    console.log('AnnotationCanvas: Loading image from', url.replace(/token=[^&]+/, 'token=***'));
+    const safeLog = url.replace(/token=[^&]+/, 'token=***');
+    console.log('AnnotationCanvas: applyImageUrl ->', safeLog);
     const img = new window.Image();
     img.onload = () => {
       setImage(img);
@@ -45,23 +45,71 @@ function AnnotationCanvas({
       setAuthState('done');
     };
     img.onerror = () => {
-      console.error('AnnotationCanvas: Failed to load image:', url.replace(/token=[^&]+/, 'token=***'));
+      console.error('AnnotationCanvas: Failed to load image:', safeLog);
     };
     img.src = url;
   };
 
-  // Build authenticated API URL and load via img.src
-  const loadWithToken = (token) => {
-    console.log('AnnotationCanvas: Got token, building authenticated URL');
-    const apiUrl = attachment.url.replace('https://trello.com/', 'https://api.trello.com/')
-      + '?key=' + TRELLO_API_KEY + '&token=' + token;
-    applyImageUrl(apiUrl);
+  // Pick the best (largest) preview from an array; returns null if empty
+  const bestPreview = (previews) => {
+    if (!previews || previews.length === 0) return null;
+    return previews.reduce((a, b) => (a.width > b.width ? a : b));
   };
 
-  // On mount: check if already authorized. If so, load immediately.
-  // If not, show the Authorize button (getToken needs a user gesture for the popup).
+  // Load image using REST API:
+  //  1. Fetch attachment metadata (JSON, CORS-compatible) to get preview CDN URLs
+  //  2. Use the largest preview via img.src (CDN URLs load without auth cross-origin)
+  //  3. If no previews, fall back to img.src on the download URL (may fail for private boards)
+  const loadWithToken = (token) => {
+    // First check if the attachment object already carries previews
+    const local = bestPreview(attachment.previews);
+    if (local) {
+      console.log(`AnnotationCanvas: Using attachment.previews (${local.width}x${local.height})`);
+      applyImageUrl(local.url);
+      return;
+    }
+
+    // Otherwise fetch the attachment metadata from the REST API
+    const cardMatch = attachment.url.match(/\/cards\/([^\/]+)\//);
+    if (!cardMatch) {
+      console.error('AnnotationCanvas: Cannot parse card ID from URL, trying direct load');
+      applyImageUrl(attachment.url);
+      return;
+    }
+    const cardId = cardMatch[1];
+
+    console.log('AnnotationCanvas: Fetching attachment metadata from REST API');
+    fetch(
+      `https://api.trello.com/1/cards/${cardId}/attachments/${attachment.id}` +
+      `?key=${TRELLO_API_KEY}&token=${token}`
+    )
+      .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(data => {
+        const preview = bestPreview(data.previews);
+        if (preview) {
+          console.log(`AnnotationCanvas: Using REST API preview (${preview.width}x${preview.height})`);
+          applyImageUrl(preview.url);
+        } else {
+          console.warn('AnnotationCanvas: No previews returned, trying direct download URL');
+          applyImageUrl(attachment.url);
+        }
+      })
+      .catch(err => {
+        console.error('AnnotationCanvas: Metadata fetch failed:', err);
+        applyImageUrl(attachment.url);
+      });
+  };
+
+  // On mount: check authorization. If already authorized, load immediately.
+  // If not, show the Authorize button — getToken/authorize need a user gesture for the popup.
   useEffect(() => {
     if (!attachment || !t) return;
+
+    console.log('AnnotationCanvas: attachment keys:', Object.keys(attachment));
+    console.log('AnnotationCanvas: previews in attachment:', (attachment.previews || []).length);
 
     if (!TRELLO_API_KEY) {
       applyImageUrl(attachment.url);
@@ -73,11 +121,9 @@ function AnnotationCanvas({
         console.log('AnnotationCanvas: isAuthorized =', isAuth);
         if (isAuth) {
           return t.getRestApi().getToken().then(tok => {
-            console.log('AnnotationCanvas: token received =', tok ? 'yes' : 'null/undefined');
             if (tok) {
               loadWithToken(tok);
             } else {
-              // Authorized but no token — fall back to direct
               applyImageUrl(attachment.url);
             }
           });
@@ -91,11 +137,10 @@ function AnnotationCanvas({
       });
   }, [attachment, t]);
 
-  // Handle authorize button click — must be a user gesture so the popup is allowed
-  // authorize() triggers the OAuth consent popup (requires user gesture).
-  // getToken() only retrieves an already-stored token — it does NOT show a popup.
+  // authorize() shows the OAuth consent popup (requires user gesture).
+  // getToken() only retrieves an already-stored token.
   const handleAuthorize = () => {
-    console.log('AnnotationCanvas: Authorize button clicked, calling authorize()');
+    console.log('AnnotationCanvas: Authorize button clicked');
     const restApi = t.getRestApi();
     restApi.authorize({ expiration: 'never' })
       .then(() => {
@@ -103,12 +148,11 @@ function AnnotationCanvas({
         return restApi.getToken();
       })
       .then(tok => {
-        console.log('AnnotationCanvas: getToken() resolved, token =', tok ? 'yes' : 'null/undefined');
+        console.log('AnnotationCanvas: token =', tok ? 'yes' : 'null/undefined');
         if (tok) {
           setAuthState('loading');
           loadWithToken(tok);
         } else {
-          console.warn('AnnotationCanvas: token still null after authorize, falling back to direct load');
           applyImageUrl(attachment.url);
         }
       })
