@@ -3,6 +3,10 @@ import { Stage, Layer, Image } from 'react-konva';
 import PinMarker from './PinMarker';
 import { toRelative } from '../utils/annotations';
 
+// Your Trello API key from https://trello.com/app-key
+// Required so the modal can download private attachment images via the REST API.
+const TRELLO_API_KEY = '';
+
 /**
  * Annotation canvas component using Konva for rendering
  * Handles image display and pin annotations
@@ -29,6 +33,8 @@ function AnnotationCanvas({
   useEffect(() => {
     if (!attachment || !t) return;
 
+    let objectUrl = null;
+
     const img = new window.Image();
 
     img.onload = () => {
@@ -49,10 +55,37 @@ function AnnotationCanvas({
       console.error('AnnotationCanvas: Failed to load image:', attachment.url);
     };
 
-    // Load directly — t.signUrl() is for Power-Up iframe URLs only, not Trello
-    // attachment download URLs. Trello uses SameSite=None cookies so the browser
-    // sends credentials automatically for cross-origin requests to trello.com.
-    img.src = attachment.url;
+    // Trello attachment URLs (trello.com/1/cards/.../download/...) require auth.
+    // Cookies are not sent cross-origin (SameSite=Lax). We use the REST API:
+    // api.trello.com supports CORS and the redirect target (CDN) also allows it.
+    if (TRELLO_API_KEY) {
+      t.getRestApi()
+        .then(api => api.getToken())
+        .then(token => {
+          const apiUrl = attachment.url.replace('https://trello.com/', 'https://api.trello.com/')
+            + '?key=' + TRELLO_API_KEY + '&token=' + token;
+          return fetch(apiUrl);
+        })
+        .then(r => {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.blob();
+        })
+        .then(blob => {
+          objectUrl = URL.createObjectURL(blob);
+          img.src = objectUrl;
+        })
+        .catch(err => {
+          console.error('AnnotationCanvas: REST API fetch failed:', err);
+          img.src = attachment.url;
+        });
+    } else {
+      // No API key configured — try direct load (works for public/external attachments)
+      img.src = attachment.url;
+    }
+
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
   }, [attachment, t, containerWidth, containerHeight]);
 
   // Handle stage click for adding pins

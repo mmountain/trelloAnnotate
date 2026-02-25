@@ -29,7 +29,9 @@
 
         if (!images.length) {
           content.innerHTML = '<p style="margin:4px;color:#5e6c84;font-size:13px;">No image attachments found.</p>';
-          return t.sizeTo('#content');
+          return new Promise(function(resolve) {
+            requestAnimationFrame(function() { resolve(t.sizeTo('#content')); });
+          });
         }
 
         content.innerHTML = '<div class="attachment-list">' + images.map(function(img) {
@@ -53,7 +55,9 @@
           });
         });
 
-        return t.sizeTo('#content');
+        return new Promise(function(resolve) {
+          requestAnimationFrame(function() { resolve(t.sizeTo('#content')); });
+        });
       });
     });
   </script>

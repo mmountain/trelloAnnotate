@@ -13,6 +13,14 @@
     "iframe": {
       "url": "index.html",
       "always-serve-trello-ui": true
+    },
+    "rest": {
+      "token": {
+        "scope": {
+          "read": true,
+          "write": false
+        }
+      }
     }
   }
 }
