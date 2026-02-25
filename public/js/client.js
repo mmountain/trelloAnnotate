@@ -32,41 +32,25 @@ TrelloPowerUp.initialize({
       });
   },
   'attachment-sections': function(t, options) {
-    // Trello expects an array of objects, one for each entry in options.entries
-    // We must ensure all objects have an 'id' and a 'claimed' property
-    var entries = options.entries;
-    
-    // Use a Promise to resolve everything before returning to Trello
-    return Promise.all(entries.map(function(entry) {
-      if (/\.(png|jpg|jpeg|gif|svg|webp)$/i.test(entry.url)) {
-        // Resolve the signed URL first
-        // Wrap in Promise.resolve because t.signUrl can return a string or a Promise
-        return Promise.resolve(t.signUrl('./index.html'))
-          .then(function(signedUrl) {
-            return {
-              id: entry.id, // Must be unique
-              claimed: true,
-              icon: ICON,
-              title: 'Image Annotator',
-              content: {
-                type: 'iframe',
-                url: signedUrl,
-                height: 50
-              }
-            };
-          })
-          .catch(function(err) {
-            console.error('Error in attachment-sections signUrl:', err);
-            // Fallback if signUrl fails
-            return { id: entry.id, claimed: false };
-          });
-      } else {
-        return Promise.resolve({
-          id: entry.id,
-          claimed: false
-        });
+    var imageEntries = options.entries.filter(function(entry) {
+      return entry.url && /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(entry.url);
+    });
+
+    if (!imageEntries.length) {
+      return [];
+    }
+
+    return [{
+      id: 'image-annotator-section',
+      claimed: imageEntries,
+      icon: ICON,
+      title: 'Image Annotator',
+      content: {
+        type: 'iframe',
+        url: t.signUrl('./section.html'),
+        height: imageEntries.length * 56 + 16
       }
-    }));
+    }];
   },
   'card-badges': noop,
   'card-detail-badges': noop,

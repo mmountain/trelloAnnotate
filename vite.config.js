@@ -24,6 +24,10 @@ export default defineConfig({
           dest: '.'
         },
         {
+          src: 'public/section.html',
+          dest: '.'
+        },
+        {
           src: 'public/js',
           dest: '.'
         }

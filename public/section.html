@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="https://p.trellocdn.com/power-up.min.css">
+  <script src="https://p.trellocdn.com/power-up.min.js"></script>
+  <style>
+    body { margin: 0; padding: 8px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .attachment-list { display: flex; flex-direction: column; gap: 4px; }
+    .attachment-item { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 4px; background: #f4f5f7; }
+    .attachment-thumbnail { width: 48px; height: 36px; object-fit: cover; border-radius: 3px; flex-shrink: 0; background: #dfe1e6; }
+    .attachment-name { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #172b4d; }
+    .annotate-btn { background: #0052cc; color: white; border: none; border-radius: 3px; padding: 4px 10px; font-size: 12px; cursor: pointer; flex-shrink: 0; }
+    .annotate-btn:hover { background: #0065ff; }
+  </style>
+</head>
+<body>
+  <div id="content"></div>
+  <script>
+    var t = TrelloPowerUp.iframe();
+
+    t.render(function() {
+      return t.card('attachments').then(function(card) {
+        var images = (card.attachments || []).filter(function(a) {
+          return a.url && /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(a.url);
+        });
+
+        var content = document.getElementById('content');
+
+        if (!images.length) {
+          content.innerHTML = '<p style="margin:4px;color:#5e6c84;font-size:13px;">No image attachments found.</p>';
+          return t.sizeTo('#content');
+        }
+
+        content.innerHTML = '<div class="attachment-list">' + images.map(function(img) {
+          var safeName = img.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+          return '<div class="attachment-item">' +
+            '<img class="attachment-thumbnail" src="' + img.url + '" onerror="this.style.visibility=\'hidden\'">' +
+            '<span class="attachment-name">' + safeName + '</span>' +
+            '<button class="annotate-btn" data-id="' + img.id + '" data-name="' + safeName + '">Annotate</button>' +
+            '</div>';
+        }).join('') + '</div>';
+
+        content.querySelectorAll('.annotate-btn').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var id = btn.getAttribute('data-id');
+            var name = btn.getAttribute('data-name');
+            t.modal({
+              url: './modal.html?attachment=' + encodeURIComponent(id),
+              fullscreen: true,
+              title: 'Image Annotation: ' + name
+            });
+          });
+        });
+
+        return t.sizeTo('#content');
+      });
+    });
+  </script>
+</body>
+</html>
